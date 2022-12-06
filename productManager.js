@@ -105,8 +105,8 @@ class ProductManager {
         return maxId;
     };
 
-    async #getId(idProduct) {
-        await this.#readProducts();
+    #getId(idProduct) {
+        this.#readProducts();
         return this.products.find((product) => product.id === idProduct);
     };
 
