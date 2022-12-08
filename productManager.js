@@ -1,15 +1,14 @@
 import fs from "fs";
 
-
-/*
-console.clear();  */
-
 class ProductManager {
 
-  constructor () {
-    this.products = [];  }
+    constructor () {
+        this.products = [];
+        this.path = './Products.json'
+        this.productsTempo = [];
+    }
 
-      async addProduct (title, description, price, thumbnail, code, stock ) {
+    async addProduct (title, description, price, thumbnail, code, stock ) {
         try {
 
             const product = {
@@ -22,78 +21,148 @@ class ProductManager {
                 stock,
             };
 
-
-            if (fs.existsSync("Products.json")) {
+            if (fs.existsSync(this.path)) {
                 this.#readProducts();
 
                         if (title == "" || description == "" || price == "" || thumbnail == "" || code == "" || stock== "" ) {
-                            console.log ("Incomplete data");
-                    
+                                console.log ("Incomplete data");
                         } else {
-
                             if(!this.products.some(p => p.code === product.code)) {
-                        
                                 this.products.push(product);
                                 console.log (this.products); 
                                 return product.id;
-
                             } else {
                                 console.log (`This product code ${product.code} already exists.`); 
                             }
                         }
-
             } else {
-
                         if (title == "" || description == "" || price == "" || thumbnail == "" || code == "" || stock== "" ) {
-                            console.log ("Incomplete data");
-                    
+                                console.log ("Incomplete data");
                         } else {
-
                             if(!this.products.some(p => p.code === product.code)) {
-                        
                                 this.products.push(product);
                                 console.log (this.products); 
                                 return product.id;
-
                             } else {
                                 console.log (`This product code ${product.code} already exists.`); 
                             }
                         }
             }
-            fs.promises.writeFile("Products.json", JSON.stringify(this.products));
-
+            fs.promises.writeFile(this.path, JSON.stringify(this.products));
         } catch (error) {
             console.log(error);
             throw new Error(error);
             }
-      
         };
-
+            
 
     async getProducts () {
-        await this.#readProducts();
-
-        if (this.products.length === 0) {
-            console.log("Empty list");
-            return;
+        try {
+            if (fs.existsSync(this.path)) {
+                await this.#readProducts();
+                    if (this.products.length < 1) {
+                        console.log("Empty list");
+                        return;
+                    } else {
+                        console.log(this.products);
+                    }
             } else {
-            console.log(this.products);
+                throw new Error("Empty list");
+            }
+        } catch (error) {
+            console.log(error);
+            throw new Error(error);
+        }
+    };
+    
+    async getProductById (idProduct) {
+        try {
+            if (fs.existsSync(this.path)) {
+                await this.#readProducts();
+                    const product = this.#getId(idProduct);
+                    if (product) {
+                        console.log(product);
+                    } else {
+                        console.log(`Product ID ${idProduct} not found.(search)`);
+                    }
+            } else {
+                throw new Error("Empty list");
+            }
+        } catch (error) {
+            console.log(error);
+            throw new Error(error);
         }
     };
 
-    async getProductById (idProduct) {
-        await this.#readProducts();
+    async updateProduct (idProduct, title, description, price, thumbnail, code, stock ) {
+        try {
+            if (fs.existsSync(this.path)) {
+                        
+                const dataTempo = {
+                    title,
+                    description,
+                    price,
+                    thumbnail,
+                    code,
+                    stock,
+                    };
 
-        const product = this.#getId(idProduct);
-            if (product) {
-            console.log(product);
+                await this.#readProducts();
+                const product = this.#getId(idProduct);
+                    if (product) {
+
+                            const dataUpdate = { 
+                                id: idProduct, ...dataTempo }
+                            this.productsTempo.push(dataUpdate);
+                            console.log(dataUpdate);
+
+                            await this.#readProducts();
+                            const searchProd= this.products.filter((product) => product.id !== idProduct);    
+                            this.products = searchProd;
+                            await fs.promises.writeFile(this.path, JSON.stringify(this.products))
+                            
+                            await this.#readProducts();
+                            this.products.push(dataUpdate);
+                            await fs.promises.writeFile(this.path, JSON.stringify(this.products))
+
+                    } else {
+                        console.log(`Product ID ${idProduct} not found.(update)`);
+                    }
+                } else {
+                    throw new Error("Empty list");
+                }
+        } catch (error) {
+            console.log(error);
+            throw new Error(error);
+        }
+    };
+
+    async deleteProduct(idProduct) {
+        try {
+            if (fs.existsSync(this.path)) {
+                await this.#readProducts();
+
+                    const product = this.#getId(idProduct);
+                        if (product) {
+
+                            let deleteProd= this.products.filter((product) => product.id !== idProduct);    
+                            console.log(deleteProd);
+                            this.products= deleteProd;
+                            await fs.promises.writeFile(this.path, JSON.stringify(this.products))
+                        } else {
+                            console.log(`Product ID ${idProduct} not found.(delete)`);
+                        }
             } else {
-            console.log("Product not found");
+                throw new Error("Empty list");
             }
+        } catch (error) {
+            console.log(error);
+            throw new Error(error);
+        }
     };
 
     async #readProducts() {
-        const products = JSON.parse(await fs.promises.readFile("Products.json", "utf-8"));
+        const products = JSON.parse(await fs.promises.readFile(this.path, "utf-8"));
         this.products = products;
     };
 
@@ -109,7 +178,6 @@ class ProductManager {
         this.#readProducts();
         return this.products.find((product) => product.id === idProduct);
     };
-
 }
 
 
@@ -122,6 +190,7 @@ productManager.getProducts ();
 productManager.addProduct ("producto prueba","Este es un producto prueba",200,"Sin imagen","abc123", 25);
 productManager.addProduct ("producto prueba","Este es un producto prueba",200,"Sin imagen","abc124", 25);
 productManager.addProduct ("producto prueba","Este es un producto prueba",200,"Sin imagen","abc125", 25);
+productManager.addProduct ("producto prueba","Este es un producto prueba",200,"Sin imagen","abc126", 25);
 
 /* Retorna lista de productos cargados */
 productManager.getProducts ();
@@ -137,6 +206,21 @@ productManager.getProductById (3);
 
 /* Id no encontrado */
 productManager.getProductById (8);
+
+/* Update producto */
+productManager.updateProduct (3,"NUEVO producto prueba","Este es un producto prueba",200,"Sin imagen","abc125", 50); 
+
+/* Retorna error Update - producto no existe */
+productManager.updateProduct (55,"NUEVO producto prueba","Este es un producto prueba",200,"Sin imagen","abc125", 50); 
+
+/* Delete producto */
+productManager.deleteProduct (2);
+
+/* Retorna error Delete - producto no existe */
+productManager.deleteProduct (12);
+
+
+
 
 
 
